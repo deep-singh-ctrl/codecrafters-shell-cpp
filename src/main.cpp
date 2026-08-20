@@ -23,7 +23,7 @@ int main() {
         std::cout << argument << " is a shell builtin" << std::endl;
       }
       else{
-        std::cout << argument << ": command not found" << std::endl;  
+        std::cout << argument << ": not found" << std::endl;  
       }
     }
     else{
