@@ -25,16 +25,7 @@ int main() {
         std::cout << argument << " is a shell builtin" << std::endl;
       }
       else{
-
-        std::cout << argument << ": not found" << std::endl;  
-      }
-    }
-    else{
-      //from this point on the shell should check for the command in all directories 
-      // of the path from left to right and print the match with executable
-      // permissions.
-          // Read environment variable (e.g., PATH or a custom one)
-    const char* env_p = std::getenv("PATH");
+        const char* env_p = std::getenv("PATH");
     
     if (env_p == nullptr) {
       std::cout << "Environment variable not found." << std::endl;
@@ -70,6 +61,15 @@ int main() {
     if(!valid){
       std::cout << command << ": command not found" << std::endl;
     }
+         
+      }
+    }
+    else{
+      //from this point on the shell should check for the command in all directories 
+      // of the path from left to right and print the match with executable
+      // permissions.
+          // Read environment variable (e.g., PATH or a custom one)
+    
     }
   }
 }
