@@ -61,7 +61,7 @@ int main() {
                 }
 
                 if (!valid) {
-                    std::cout << command.substr(5) << ": command not found" << std::endl;
+                    std::cout << command.substr(5) << ": not found" << std::endl;
                 }
             }
 
