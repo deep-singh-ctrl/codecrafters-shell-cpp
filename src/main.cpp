@@ -53,7 +53,7 @@ int main() {
                         if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
                             (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
                             (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
-                            std::cout << command.substr(5) << " is " << filePath << std::endl;
+                            std::cout << command.substr(5) << " is " << filePath.string() << std::endl;
                             valid = true;
                             break;
                         }
