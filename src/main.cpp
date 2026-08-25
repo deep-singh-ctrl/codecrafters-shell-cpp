@@ -3,14 +3,22 @@
 #include <filesystem>
 #include <vector>
 #include <sstream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
-std::filesystem::path searchForeExecutableFilePath(){
+void runExecutableFilePath(std::vector<std::string> &userInput){
     const char* env_p = std::getenv("PATH");
     //WARNING : No error handling in case PATH does not exist
     std::string env_val(env_p);
     std::stringstream ss(env_val);
     std::string token;
-
+    std::vector<char* > argv;
+    for(std::string &s : userInput){
+      argv.push_back(s.data());
+    }
+    char** argvPointer = argv.data();
+    // Use this argvPointer inside exec when you fork for a new process 
     // For LINUX the delimiter for PATH directories is a colon
     char delimiter = ':';
     std::vector<std::string> results;
@@ -22,21 +30,22 @@ std::filesystem::path searchForeExecutableFilePath(){
     bool valid = false;
     namespace fs = std::filesystem;
     for (std::string& s : results) {
-        fs::path filePath = s + "/" + command.substr(5);
+        fs::path filePath = s + "/" + userInput[0];
         if (std::filesystem::exists(filePath)) {
             
             if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
                 (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
                 (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
-                std::cout << command.substr(5) << " is " << filePath.string() << std::endl;
-                valid = true;
-                break;
+                 pid_t child = fork();
+                 // assuming that the child can ALWAYS be created.
+                 if(child == 0){
+                  execv(filePath.string().data(), argvPointer); 
+                 }
+                 else if(child > 0){
+                  waitpid(child, NULL, WNOHANG);
+                 }
             }
         }
-    }
-
-    if (!valid) {
-        std::cout << command.substr(5) << ": not found" << std::endl;
     }
 }
 
