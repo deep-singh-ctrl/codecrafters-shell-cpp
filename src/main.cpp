@@ -120,7 +120,7 @@ int main() {
             
         } else {
             // Checking whether it's a executable
-            runExecutableFilePath();
+            runExecutableFilePath(userInput);
         }
     }
     return 0;
