@@ -13,12 +13,12 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
     std::string env_val(env_p);
     std::stringstream ss(env_val);
     std::string token;
-    // execv expects a NULL at the end of the argument list so we append one to userInput.
-    userInput.push_back(NULL);
     std::vector<char* > argv;
     for(std::string &s : userInput){
       argv.push_back(s.data());
     }
+    // execv expects a NULL at the end of the argument list so we append one to argv.
+    argv.push_back(NULL);
     char** argvPointer = argv.data();
     // Use this argvPointer inside exec when you fork for a new process 
     // For LINUX the delimiter for PATH directories is a colon
@@ -44,7 +44,7 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
                   execv(filePath.string().data(), argvPointer); 
                  }
                  else if(child > 0){
-                  waitpid(child, NULL, WNOHANG);
+                  waitpid(child, NULL, 0);
                  }
             }
         }
