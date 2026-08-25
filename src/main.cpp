@@ -13,6 +13,8 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
     std::string env_val(env_p);
     std::stringstream ss(env_val);
     std::string token;
+    // execv expects a NULL at the end of the argument list so we append one to userInput.
+    userInput.push_back(NULL);
     std::vector<char* > argv;
     for(std::string &s : userInput){
       argv.push_back(s.data());
