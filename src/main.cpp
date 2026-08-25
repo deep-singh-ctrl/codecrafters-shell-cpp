@@ -4,6 +4,43 @@
 #include <vector>
 #include <sstream>
 
+std::filesystem::path searchForeExecutableFilePath(){
+    const char* env_p = std::getenv("PATH");
+    //WARNING : No error handling in case PATH does not exist
+    std::string env_val(env_p);
+    std::stringstream ss(env_val);
+    std::string token;
+
+    // For LINUX the delimiter for PATH directories is a colon
+    char delimiter = ':';
+    std::vector<std::string> results;
+
+    while (std::getline(ss, token, delimiter)) {
+        results.push_back(token);
+    }
+
+    bool valid = false;
+    namespace fs = std::filesystem;
+    for (std::string& s : results) {
+        fs::path filePath = s + "/" + command.substr(5);
+        if (std::filesystem::exists(filePath)) {
+            
+            if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
+                (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
+                (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
+                std::cout << command.substr(5) << " is " << filePath.string() << std::endl;
+                valid = true;
+                break;
+            }
+        }
+    }
+
+    if (!valid) {
+        std::cout << command.substr(5) << ": not found" << std::endl;
+    }
+}
+
+
 int main() {
     // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
@@ -14,7 +51,12 @@ int main() {
         std::cout << "$ ";
         std::string command;
         std::getline(std::cin, command);
-
+        std::vector<std::string> userInput;
+        std::stringstream ss(command);
+        std::string token;
+        while(ss >> token){
+          userInput.push_back(token);
+        }
         if (command == "exit") {
             break;
         } else if (command.substr(0, 4) == "echo") {
@@ -36,7 +78,7 @@ int main() {
                 std::stringstream ss(env_val);
                 std::string token;
 
-                // For LINUX the delimiter for PATH is a colon
+                // For LINUX the delimiter for PATH directories is a colon
                 char delimiter = ':';
                 std::vector<std::string> results;
 
@@ -64,9 +106,12 @@ int main() {
                     std::cout << command.substr(5) << ": not found" << std::endl;
                 }
             }
-
+            
         } else {
-            std::cout << command << ": command not found" << std::endl;
+            // Checking whether it's a executable
+            
+
+            
         }
     }
     return 0;
