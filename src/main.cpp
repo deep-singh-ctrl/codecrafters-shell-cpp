@@ -29,7 +29,7 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
         results.push_back(token);
     }
 
-    bool valid = false;
+    bool foundExecutable = false;
     namespace fs = std::filesystem;
     for (std::string& s : results) {
         fs::path filePath = s + "/" + userInput[0];
@@ -38,6 +38,7 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
             if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
                 (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
                 (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
+                 foundExecutable = true;
                  pid_t child = fork();
                  // assuming that the child can ALWAYS be created.
                  if(child == 0){
@@ -46,8 +47,12 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
                  else if(child > 0){
                   waitpid(child, NULL, 0);
                  }
+                 break;
             }
         }
+    }
+    if(!foundExecutable){
+        std::cout << userInput[0] << " : not found" << std::endl;
     }
 }
 
