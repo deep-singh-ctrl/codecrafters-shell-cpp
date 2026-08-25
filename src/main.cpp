@@ -52,7 +52,7 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
         }
     }
     if(!foundExecutable){
-        std::cout << userInput[0] << " : not found" << std::endl;
+        std::cout << userInput[0] << ": command not found" << std::endl;
     }
 }
 
