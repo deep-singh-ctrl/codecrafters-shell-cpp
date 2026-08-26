@@ -73,7 +73,16 @@ int main() {
         while(ss >> token){
           userInput.push_back(token);
         }
-        if(command == "pwd"){
+        if (command == "cd"){
+            std::filesystem::path new_directory = userInput[1];
+            if(std::filesystem::exists(new_directory)){
+                std::filesystem::current_path(new_directory);
+            }
+            else{
+                std::cout << "cd:" << new_directory.string() <<": No such file or directory." << std::endl; 
+            }
+        }
+        else if(command == "pwd"){
             //I am not dealing with errors here, if error is thrown that's an afterthought
             std::filesystem::path cwd = std::filesystem::current_path();
             std::cout << cwd.string() << std::endl;
