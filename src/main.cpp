@@ -74,6 +74,10 @@ int main() {
           userInput.push_back(token);
         }
         if (userInput[0] == "cd"){
+            std::filesystem::path home_directory = std::getenv("HOME");
+            if(userInput[1].substr(0,1) == "~"){
+                userInput[1] = home_directory.string() + "/" + userInput[1].substr(1);
+            }
             std::filesystem::path new_directory = userInput[1];
             if(std::filesystem::exists(new_directory)){
                 std::filesystem::current_path(new_directory);
