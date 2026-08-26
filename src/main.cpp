@@ -56,6 +56,35 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
     }
 }
 
+void parseUserInput(std::vector<std::string> &userInput, const std::string &command){
+    bool normal = true;
+    bool single_quoted = false;
+    std::string token = "";
+    for(char ch : command){
+        if(ch == '\'' && single_quoted == false){
+            normal = false;
+            single_quoted = true;
+        }
+        else if(ch == '\'' && single_quoted == true){
+            normal = true;
+            single_quoted = false;
+            userInput.push_back(token);
+            token = "";
+        }
+        else if(normal && !(ch == ' ')){
+            token += ch;
+        }
+        else if(normal && (ch == ' ')){
+            if(token.size() != 0)
+                userInput.push_back(token);
+            token = "";
+        }
+        else if(single_quoted){
+            token += ch;
+        }
+    }
+    if(token.size() > 0) userInput.push_back(token);
+}
 
 int main() {
     // Flush after every std::cout / std::cerr
@@ -68,11 +97,9 @@ int main() {
         std::string command;
         std::getline(std::cin, command);
         std::vector<std::string> userInput;
-        std::stringstream ss(command);
-        std::string token;
-        while(ss >> token){
-          userInput.push_back(token);
-        }
+        // this helps us take care of single quotes, double quotes etc inside
+        // the command.
+        parseUserInput(userInput, command);
         if (userInput[0] == "cd"){
             std::filesystem::path home_directory = std::getenv("HOME");
             if(userInput[1].substr(0,1) == "~"){
@@ -94,7 +121,10 @@ int main() {
         else if (command == "exit") {
             break;
         } else if (command.substr(0, 4) == "echo") {
-            std::cout << command.substr(5) << std::endl;
+            for(int i = 1; i < userInput.size(); i++){
+                std::cout << userInput[i] << " ";
+            }
+            std::cout << std:: endl;
         } else if (command.substr(0, 4) == "type") {
             std::string argument = command.substr(5);
 
