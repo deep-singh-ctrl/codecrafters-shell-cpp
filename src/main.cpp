@@ -76,7 +76,7 @@ int main() {
         if(command == "pwd"){
             //I am not dealing with errors here, if error is thrown that's an afterthought
             std::filesystem::path cwd = std::filesystem::current_path();
-            std::cout << cwd << std::endl;
+            std::cout << cwd.string() << std::endl;
         }
         else if (command == "exit") {
             break;
