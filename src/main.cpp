@@ -79,7 +79,7 @@ int main() {
                 std::filesystem::current_path(new_directory);
             }
             else{
-                std::cout << "cd: " << new_directory.string() <<": No such file or directory." << std::endl; 
+                std::cout << "cd: " << new_directory.string() <<": No such file or directory" << std::endl; 
             }
         }
         else if(command == "pwd"){
