@@ -73,14 +73,19 @@ int main() {
         while(ss >> token){
           userInput.push_back(token);
         }
-        if (command == "exit") {
+        if(command == "pwd"){
+            //I am not dealing with errors here, if error is thrown that's an afterthought
+            std::filesystem::path cwd = std::filesystem::current_path();
+            std::cout << cwd << std::endl;
+        }
+        else if (command == "exit") {
             break;
         } else if (command.substr(0, 4) == "echo") {
             std::cout << command.substr(5) << std::endl;
         } else if (command.substr(0, 4) == "type") {
             std::string argument = command.substr(5);
 
-            if (argument == "echo" || argument == "type" || argument == "exit") {
+            if (argument == "echo" || argument == "type" || argument == "exit" || argument == "pwd") {
                 std::cout << argument << " is a shell builtin" << std::endl;
             } else {
                 const char* env_p = std::getenv("PATH");
