@@ -73,7 +73,7 @@ int main() {
         while(ss >> token){
           userInput.push_back(token);
         }
-        if (command == "cd"){
+        if (userInput[0] == "cd"){
             std::filesystem::path new_directory = userInput[1];
             if(std::filesystem::exists(new_directory)){
                 std::filesystem::current_path(new_directory);
