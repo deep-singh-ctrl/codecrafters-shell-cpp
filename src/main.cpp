@@ -59,25 +59,30 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
 void parseUserInput(std::vector<std::string> &userInput, const std::string &command){
     bool normal = true;
     bool single_quoted = false;
+    bool double_quoted = false;
     std::string token = "";
     for(char ch : command){
-        if(ch == '\'' && single_quoted == false){
-            normal = false;
+        if(ch == '\"' && double_quoted == false){
+            double_quoted = true;
+        }
+        else if(ch == '\"' && double_quoted == true){
+            double_quoted = false;
+        }
+        else if(ch == '\'' && single_quoted == false){
             single_quoted = true;
         }
         else if(ch == '\'' && single_quoted == true){
-            normal = true;
             single_quoted = false;
         }
-        else if(normal && !(ch == ' ')){
+        else if(!single_quoted && !double_quoted && !(ch == ' ')){
             token += ch;
         }
-        else if(normal && (ch == ' ')){
+        else if(!single_quoted && !double_quoted && (ch == ' ')){
             if(token.size() != 0)
                 userInput.push_back(token);
             token = "";
         }
-        else if(single_quoted){
+        else if(single_quoted || double_quoted){
             token += ch;
         }
     }
