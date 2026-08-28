@@ -122,7 +122,7 @@ int main() {
             break;
         } else if (command.substr(0, 4) == "echo") {
             for(int i = 1; i < userInput.size(); i++){
-                std::cout << userInput[i] << " ";
+                std::cout << userInput[i];
             }
             std::cout << std:: endl;
         } else if (command.substr(0, 4) == "type") {
