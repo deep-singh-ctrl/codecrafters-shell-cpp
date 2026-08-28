@@ -68,8 +68,6 @@ void parseUserInput(std::vector<std::string> &userInput, const std::string &comm
         else if(ch == '\'' && single_quoted == true){
             normal = true;
             single_quoted = false;
-            userInput.push_back(token);
-            token = "";
         }
         else if(normal && !(ch == ' ')){
             token += ch;
