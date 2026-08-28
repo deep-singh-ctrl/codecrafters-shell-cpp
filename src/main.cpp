@@ -63,27 +63,35 @@ void parseUserInput(std::vector<std::string> &userInput, const std::string &comm
     std::string token = "";
     for(char ch : command){
         if(ch == '\"' && double_quoted == false){
-            double_quoted = true;
             if(single_quoted){
                 token += ch;
+            }
+            else{
+                double_quoted = true;
             }
         }
         else if(ch == '\"' && double_quoted == true){
-            double_quoted = false;
             if(single_quoted){
                 token += ch;
             }
+            else{
+                double_quoted = false;
+            }
         }
         else if(ch == '\'' && single_quoted == false){
-            single_quoted = true;
             if(double_quoted){
                 token += ch;
             }
+            else{
+                double_quoted = false;
+            }
         }
         else if(ch == '\'' && single_quoted == true){
-            single_quoted = false;
             if(double_quoted){
                 token += ch;
+            }
+            else{
+                double_quoted = false;
             }
         }
         else if(!single_quoted && !double_quoted && !(ch == ' ')){
