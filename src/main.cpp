@@ -83,7 +83,7 @@ void parseUserInput(std::vector<std::string> &userInput, const std::string &comm
                 token += ch;
             }
             else{
-                double_quoted = false;
+                single_quoted = true;
             }
         }
         else if(ch == '\'' && single_quoted == true){
@@ -91,7 +91,7 @@ void parseUserInput(std::vector<std::string> &userInput, const std::string &comm
                 token += ch;
             }
             else{
-                double_quoted = false;
+                single_quoted = false;
             }
         }
         else if(ch == ' '){
