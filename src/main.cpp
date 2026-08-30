@@ -94,15 +94,17 @@ void parseUserInput(std::vector<std::string> &userInput, const std::string &comm
                 double_quoted = false;
             }
         }
-        else if(!single_quoted && !double_quoted && !(ch == ' ')){
-            token += ch;
+        else if(ch == ' '){
+            if(single_quoted || double_quoted){
+                token += ch;
+            }
+            else{
+                if(token.size() != 0)
+                    userInput.push_back(token);
+                token = "";
+            }
         }
-        else if(!single_quoted && !double_quoted && (ch == ' ')){
-            if(token.size() != 0)
-                userInput.push_back(token);
-            token = "";
-        }
-        else if(single_quoted || double_quoted){
+        else {
             token += ch;
         }
     }
