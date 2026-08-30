@@ -123,7 +123,8 @@ void parseUserInput(std::vector<std::string> &userInput, const std::string &comm
             token += ch;
         }
         else if(toBreak){
-            userInput.push_back(token);
+            if(token.size() > 0)
+                userInput.push_back(token);
             token = "";
         }
         current_state = next_state;
