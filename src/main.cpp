@@ -166,10 +166,10 @@ int main() {
         else if (command == "exit") {
             break;
         } else if (command.substr(0, 4) == "echo") {
-            for(int i = 1; i < userInput.size(); i++){
-                std::cout << userInput[i];
+            for(int i = 1; i < userInput.size() - 1; i++){
+                std::cout << userInput[i] << " ";
             }
-            std::cout << std:: endl;
+            std::cout << userInput.back() << std::endl;
         } else if (command.substr(0, 4) == "type") {
             std::string argument = command.substr(5);
 
