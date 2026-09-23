@@ -243,6 +243,7 @@ int main() {
                 std::cout << std::endl;
             }
         }
+        // reaping zombie process. 
         for(int i = 0; i < backgroundJobs.size(); i++){
             if(backgroundJobs[i].running == false){
                 backgroundJobs.erase(backgroundJobs.begin() + i);
@@ -347,6 +348,15 @@ int main() {
                 }
                 std::cout << std::endl;
             }
+            
+            // reaping zombie process. 
+            for(int i = 0; i < backgroundJobs.size(); i++){
+                if(backgroundJobs[i].running == false){
+                    backgroundJobs.erase(backgroundJobs.begin() + i);
+                    i--;
+                }
+            }
+
         }
         else if (command == "exit") {
             break;
