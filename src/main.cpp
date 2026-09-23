@@ -362,7 +362,7 @@ int main() {
                 }
                 bool foundExecutable = false;
                 namespace fs = std::filesystem;
-                std::string executableName = (userInput[0]);
+                std::string executableName = (userInput[1]);
                 for (std::string& s : results) {
                     fs::path filePath = s + "/" + executableName;
                     if (std::filesystem::exists(filePath)) {
@@ -377,7 +377,7 @@ int main() {
                     }
                 }
                 if(!foundExecutable){
-                    std::cerr << executableName << ": command not found" << std::endl;
+                    std::cout << argument << ": not found" << std::endl;
                 }
 
             }
