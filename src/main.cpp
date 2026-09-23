@@ -219,25 +219,28 @@ int main() {
     std::cerr << std::unitbuf;
     // TODO: Uncomment the code below to pass the first stage
     while (true) {
+        //reaping jobs at the start of any command. 
         for(int i = 0; i < backgroundJobs.size(); i++){
             if(waitpid(backgroundJobs[i].pid, NULL, WNOHANG) != 0){
                 backgroundJobs[i].running = false;
             }
         }
+        // display done
         for(int i = 0; i < backgroundJobs.size(); i++){
             if(backgroundJobs[i].running == false){
                 if(i == backgroundJobs.size() - 1){
-                    std::cout << "[" << backgroundJobs[i].job_id << "]+ " << "Done " << std::endl; 
+                    std::cout << "[" << backgroundJobs[i].job_id << "]+ " << "Done " ;
                 }
                 else if(i == backgroundJobs.size() - 2){
-                    std::cout << "[" << backgroundJobs[i].job_id << "]- " << "Done " << std::endl;
+                    std::cout << "[" << backgroundJobs[i].job_id << "]- " << "Done " ;
                 }
                 else{
-                    std::cout << "[" << backgroundJobs[i].job_id << "] " << "Done " << std::endl;
+                    std::cout << "[" << backgroundJobs[i].job_id << "] " << "Done " ;
                 }
                 for(std::string &x: backgroundJobs[i].command){
                     std::cout << x << " ";
                 }
+                std::cout << std::endl;
             }
         }
         for(int i = 0; i < backgroundJobs.size(); i++){
