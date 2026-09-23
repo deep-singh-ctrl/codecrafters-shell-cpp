@@ -227,13 +227,16 @@ int main() {
         for(int i = 0; i < backgroundJobs.size(); i++){
             if(backgroundJobs[i].running == false){
                 if(i == backgroundJobs.size() - 1){
-                    std::cout << "[" << backgroundJobs[i].job_id << "]+ " << "Done" << std::endl; 
+                    std::cout << "[" << backgroundJobs[i].job_id << "]+ " << "Done " << std::endl; 
                 }
                 else if(i == backgroundJobs.size() - 2){
-                    std::cout << "[" << backgroundJobs[i].job_id << "]- " << "Done" << std::endl;
+                    std::cout << "[" << backgroundJobs[i].job_id << "]- " << "Done " << std::endl;
                 }
                 else{
-                    std::cout << "[" << backgroundJobs[i].job_id << "] " << "Done" << std::endl;
+                    std::cout << "[" << backgroundJobs[i].job_id << "] " << "Done " << std::endl;
+                }
+                for(std::string &x: backgroundJobs[i].command){
+                    std::cout << x << " ";
                 }
             }
         }
