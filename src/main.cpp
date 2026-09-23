@@ -220,6 +220,24 @@ int main() {
     // TODO: Uncomment the code below to pass the first stage
     while (true) {
         for(int i = 0; i < backgroundJobs.size(); i++){
+            if(waitpid(backgroundJobs[i].pid, NULL, WNOHANG) != 0){
+                backgroundJobs[i].running = false;
+            }
+        }
+        for(int i = 0; i < backgroundJobs.size(); i++){
+            if(backgroundJobs[i].running == false){
+                if(i == backgroundJobs.size() - 1){
+                    std::cout << "[" << backgroundJobs[i].job_id << "]+ " << "Done" << std::endl; 
+                }
+                else if(i == backgroundJobs.size() - 2){
+                    std::cout << "[" << backgroundJobs[i].job_id << "]- " << "Done" << std::endl;
+                }
+                else{
+                    std::cout << "[" << backgroundJobs[i].job_id << "] " << "Done" << std::endl;
+                }
+            }
+        }
+        for(int i = 0; i < backgroundJobs.size(); i++){
             if(backgroundJobs[i].running == false){
                 backgroundJobs.erase(backgroundJobs.begin() + i);
                 i--;
