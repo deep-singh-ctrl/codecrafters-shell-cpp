@@ -220,8 +220,9 @@ int main() {
     // TODO: Uncomment the code below to pass the first stage
     while (true) {
         for(int i = 0; i < backgroundJobs.size(); i++){
-            if(waitpid(backgroundJobs[i].pid, NULL, WNOHANG) != 0){
-                backgroundJobs[i].running = false;
+            if(backgroundJobs[i].running == false){
+                backgroundJobs.erase(backgroundJobs.begin() + i);
+                i--;
             }
         }
         std::cout << "$ ";
@@ -315,7 +316,7 @@ int main() {
                     std::cout << "[" << backgroundJobs[i].job_id << "]+ " << status;    
                 }
                 else{
-                    std::cout << "[" << backgroundJobs[i].job_id << "]  " << "Running ";
+                    std::cout << "[" << backgroundJobs[i].job_id << "]  " << status;
                 }
                 for(std::string &x: backgroundJobs[i].command){
                     std::cout << x << " ";
