@@ -225,13 +225,13 @@ void executePipeline(std::vector<std::vector<std::string>> &pipeline){
         runExecutableFilePath(pipeline[0]);
     }
     else if(child_write > 0){
-        close(fd[1]);
+        close(fd[0]);
         waitpid(child_write,NULL,0);
     }
     pid_t child_read = fork();
     if(child_read == 0){
         dup2(fd[0] , STDIN_FILENO);
-        close(fd[0]);  
+        close(fd[1]);  
         runExecutableFilePath(pipeline[1]);
     }
     else if(child_read > 0){
