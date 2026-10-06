@@ -220,8 +220,8 @@ void executePipeline(std::vector<std::vector<std::string>> &pipeline){
     //assuming no errors happen. 
     pid_t child_write = fork();
     if(child_write == 0){
-        dup2(fd[0] , STDOUT_FILENO);
-        close(fd[1]);  
+        dup2(fd[1] , STDOUT_FILENO);
+        close(fd[0]);  
         runExecutableFilePath(pipeline[0]);
     }
     else if(child_write > 0){
@@ -229,8 +229,8 @@ void executePipeline(std::vector<std::vector<std::string>> &pipeline){
     }
     pid_t child_read = fork();
     if(child_read == 0){
-        dup2(fd[1] , STDIN_FILENO);
-        close(fd[0]);  
+        dup2(fd[0] , STDIN_FILENO);
+        close(fd[1]);  
         runExecutableFilePath(pipeline[1]);
     }
     else if(child_read > 0){
@@ -238,7 +238,6 @@ void executePipeline(std::vector<std::vector<std::string>> &pipeline){
     }
     close(fd[0]);
     close(fd[1]);
-
 }
 
 int main() {
