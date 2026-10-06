@@ -10,7 +10,8 @@
 #include <sys/wait.h>
 #include <cstdlib>
 #include <iterator>
-// Declaring some global parameters here
+
+
 class job {
 public:
     int pid;
@@ -213,6 +214,33 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
     }
 }
 
+void executePipeline(std::vector<std::vector<std::string>> &pipeline){
+    int fd[2];
+    pipe(fd);
+    //assuming no errors happen. 
+    pid_t child_write = fork();
+    if(child_write == 0){
+        dup2(fd[0] , STDOUT_FILENO);
+        close(fd[1]);  
+        runExecutableFilePath(pipeline[0]);
+    }
+    else if(child_write > 0){
+        waitpid(child_write,NULL,0);
+    }
+    pid_t child_read = fork();
+    if(child_read == 0){
+        dup2(fd[1] , STDIN_FILENO);
+        close(fd[0]);  
+        runExecutableFilePath(pipeline[1]);
+    }
+    else if(child_read > 0){
+        waitpid(child_read,NULL,0);
+    }
+    close(fd[0]);
+    close(fd[1]);
+
+}
+
 int main() {
     // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
@@ -259,12 +287,33 @@ int main() {
         }
 
         // this helps us take care of single quotes, double quotes etc inside
-        // the command.
+        // the command. gives us a clean token vector to deal with 
         parseUserInput(userInput, command);
-        // i Do assume that a file name is provided for redirection
+        // begining logic to implement pipelines. 
+        if(find(userInput.begin(), userInput.end(), "|") != userInput.end()){
+            std::vector<std::vector<std::string>> pipeline;
+            std::vector<std::string> currentCommand;
+            for(std::string &str : userInput){
+                if(str == "|"){
+                    pipeline.push_back(currentCommand);
+                    while(!currentCommand.size() == 0){
+                        currentCommand.pop_back();
+                    }
+                }
+                else{
+                    currentCommand.push_back(str);
+                }
+            }
+            pipeline.push_back(currentCommand); // pushing in the last command. 
+            executePipeline(pipeline);
+            continue;
+        }
+
         if(userInput.size() == 0){
             continue;
         }
+        // i Do assume that a file name is provided for redirection
+
         int orig_stdout = dup(STDOUT_FILENO);
         int orig_stderr = dup(STDERR_FILENO);
         bool redirected = false;
