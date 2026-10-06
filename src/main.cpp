@@ -223,18 +223,19 @@ void executePipeline(std::vector<std::vector<std::string>> &pipeline){
         dup2(fd[1] , STDOUT_FILENO);
         close(fd[0]);  
         runExecutableFilePath(pipeline[0]);
+        exit(0);
     }
     pid_t child_read = fork();
     if(child_read == 0){
         dup2(fd[0] , STDIN_FILENO);
         close(fd[1]);  
         runExecutableFilePath(pipeline[1]);
+        exit(0);
     }
     close(fd[0]);
     close(fd[1]);
     waitpid(child_write,NULL,0);  
     waitpid(child_read,NULL,0);
-    
 }
 
 int main() {
