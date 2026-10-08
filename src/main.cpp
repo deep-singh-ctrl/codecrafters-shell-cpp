@@ -28,14 +28,25 @@ public:
 };
 
 std::vector<job> backgroundJobs; 
-char** getArgvPointer(std::vector<std::string> &userInput);
 int handleBuiltin(std::vector<std::string>& userInput);
 
 void executeExternalCommand(std::vector<std::string>& userInput) {
-    char** argvPointer = getArgvPointer(userInput);
+    // We build argv right here so the memory stays alive for execv!
+    std::vector<char*> argv;
+    for(std::string &s : userInput){
+      argv.push_back(s.data());
+    }
+    // execv expects a NULL at the end of the argument list so we append one to argv.
+    argv.push_back(NULL);
+    char** argvPointer = argv.data();
 
     const char* env_p = std::getenv("PATH");
     //WARNING : No error handling in case PATH does not exist
+    if (env_p == nullptr) { 
+        std::cerr << "Environment variable not found." << std::endl;
+        exit(1); 
+    }
+
     std::string env_val(env_p);
     std::stringstream ss(env_val);
     std::string token;
@@ -57,12 +68,12 @@ void executeExternalCommand(std::vector<std::string>& userInput) {
                 (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
                 (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
                 execv(filePath.string().data(), argvPointer);
-                exit(1);
+                exit(1); // Safely kill child if execv fails
             }
         }
     }
     std::cerr << executableName << ": command not found" << std::endl;
-    exit(1);
+    exit(1); // Safely kill child if command not found
 }
 
 enum parser_state {
