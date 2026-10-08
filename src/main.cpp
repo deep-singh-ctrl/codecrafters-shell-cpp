@@ -138,117 +138,40 @@ void runBackgroundJob(std::vector<std::string> &userInput){
     // running an executable in the background
     // trimming the trailing & from the userInput
     userInput.pop_back();
-    const char* env_p = std::getenv("PATH");
-    //WARNING : No error handling in case PATH does not exist
-    std::string env_val(env_p);
-    std::stringstream ss(env_val);
-    std::string token;
-    std::vector<char* > argv;
-    for(std::string &s : userInput){
-      argv.push_back(s.data());
-    }
-    // execv expects a NULL at the end of the argument list so we append one to argv.
-    argv.push_back(NULL);
-    char** argvPointer = argv.data();
-    // Use this argvPointer inside exec when you fork for a new process 
-    // For LINUX the delimiter for PATH directories is a colon
-    char delimiter = ':';
-    std::vector<std::string> results;
     
-    while (std::getline(ss, token, delimiter)) {
-        results.push_back(token);
-    }
-
-    bool foundExecutable = false;
-    namespace fs = std::filesystem;
-    std::string executableName = (userInput[0]);
-    for (std::string& s : results) {
-        fs::path filePath = s + "/" + executableName;
-        if (std::filesystem::exists(filePath)) {
-            
-            if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
-                (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
-                (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
-                 foundExecutable = true;
-                 pid_t child = fork();
-                 // assuming that the child can ALWAYS be created.
-                 if(child == 0){
-                    execv(filePath.string().data(), argvPointer);
-                  }
-                 else if(child > 0){
-                    int jd = 1;
-                    while(true){
-                        for(int i = 0; i < backgroundJobs.size(); i++){
-                            if(backgroundJobs[i].job_id == jd){
-                                jd++;
-                                i = 0;
-                                continue;
-                            }
-                        }
-                        break;
-                    }
-                    std::cout << "[" << jd << "]" << " " << child << std::endl;
-                    job j(child, jd, userInput);
-                    backgroundJobs.push_back(j);
-                 }
-                 break;
+     pid_t child = fork();
+     // assuming that the child can ALWAYS be created.
+     if(child == 0){
+        executeExternalCommand(userInput);
+      }
+     else if(child > 0){
+        int jd = 1;
+        while(true){
+            for(int i = 0; i < backgroundJobs.size(); i++){
+                if(backgroundJobs[i].job_id == jd){
+                    jd++;
+                    i = 0;
+                    continue;
+                }
             }
+            break;
         }
-    }
-    if(!foundExecutable){
-        std::cerr << executableName << ": command not found" << std::endl;
-    }
+        std::cout << "[" << jd << "]" << " " << child << std::endl;
+        job j(child, jd, userInput);
+        backgroundJobs.push_back(j);
+     }
 }
-
-
 
 void runExecutableFilePath(std::vector<std::string> &userInput){
-    
-    char** argvPointer = getArgvPointer(userInput);
-    // Use this argvPointer inside exec when you fork for a new process 
-    // For LINUX the delimiter for PATH directories is a colon
-
-    const char* env_p = std::getenv("PATH");
-    //WARNING : No error handling in case PATH does not exist
-    std::string env_val(env_p);
-    std::stringstream ss(env_val);
-    std::string token;
-
-    char delimiter = ':';
-    std::vector<std::string> results;
-    
-    while (std::getline(ss, token, delimiter)) {
-        results.push_back(token);
-    }
-
-    bool foundExecutable = false;
-    namespace fs = std::filesystem;
-    std::string executableName = (userInput[0]);
-    for (std::string& s : results) {
-        fs::path filePath = s + "/" + executableName;
-        if (std::filesystem::exists(filePath)) {
-            
-            if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
-                (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
-                (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
-                 foundExecutable = true;
-                 pid_t child = fork();
-                 // assuming that the child can ALWAYS be created.
-                 if(child == 0){
-                    execv(filePath.string().data(), argvPointer);
-                  }
-                 else if(child > 0){
-                  waitpid(child, NULL, 0);
-                 }
-                 break;
-            }
-        }
-    }
-    if(!foundExecutable){
-        std::cerr << executableName << ": command not found" << std::endl;
-    }
+     pid_t child = fork();
+     // assuming that the child can ALWAYS be created.
+     if(child == 0){
+        executeExternalCommand(userInput);
+      }
+     else if(child > 0){
+      waitpid(child, NULL, 0);
+     }
 }
-
 // Returns true if the shell should exit
 bool executeSingleCommand(std::vector<std::string>& userInput) {
     int status = handleBuiltin(userInput);
