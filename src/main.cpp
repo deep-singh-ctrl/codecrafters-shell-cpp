@@ -28,6 +28,8 @@ public:
 };
 
 std::vector<job> backgroundJobs; 
+char** getArgvPointer(std::vector<std::string> &userInput);
+int handleBuiltin(std::vector<std::string>& userInput);
 
 void executeExternalCommand(std::vector<std::string>& userInput) {
     char** argvPointer = getArgvPointer(userInput);
