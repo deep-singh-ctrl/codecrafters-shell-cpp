@@ -29,6 +29,40 @@ public:
 
 std::vector<job> backgroundJobs; 
 
+void executeExternalCommand(std::vector<std::string>& userInput) {
+    char** argvPointer = getArgvPointer(userInput);
+
+    const char* env_p = std::getenv("PATH");
+    //WARNING : No error handling in case PATH does not exist
+    std::string env_val(env_p);
+    std::stringstream ss(env_val);
+    std::string token;
+
+    char delimiter = ':';
+    std::vector<std::string> results;
+    
+    while (std::getline(ss, token, delimiter)) {
+        results.push_back(token);
+    }
+
+    namespace fs = std::filesystem;
+    std::string executableName = (userInput[0]);
+    for (std::string& s : results) {
+        fs::path filePath = s + "/" + executableName;
+        if (std::filesystem::exists(filePath)) {
+            
+            if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
+                (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
+                (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
+                execv(filePath.string().data(), argvPointer);
+                exit(1);
+            }
+        }
+    }
+    std::cerr << executableName << ": command not found" << std::endl;
+    exit(1);
+}
+
 enum parser_state {
     NORMAL,
     SINGLE_QUOTE_MODE,
@@ -164,12 +198,7 @@ void runBackgroundJob(std::vector<std::string> &userInput){
     }
 }
 
-void runExecutableFilePath(std::vector<std::string> &userInput){
-    const char* env_p = std::getenv("PATH");
-    //WARNING : No error handling in case PATH does not exist
-    std::string env_val(env_p);
-    std::stringstream ss(env_val);
-    std::string token;
+char** getArgvPointer(std::vector<std::string> &userInput){
     std::vector<char* > argv;
     for(std::string &s : userInput){
       argv.push_back(s.data());
@@ -177,8 +206,21 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
     // execv expects a NULL at the end of the argument list so we append one to argv.
     argv.push_back(NULL);
     char** argvPointer = argv.data();
+    return argvPointer;
+}
+
+void runExecutableFilePath(std::vector<std::string> &userInput){
+    
+    char** argvPointer = getArgvPointer(userInput);
     // Use this argvPointer inside exec when you fork for a new process 
     // For LINUX the delimiter for PATH directories is a colon
+
+    const char* env_p = std::getenv("PATH");
+    //WARNING : No error handling in case PATH does not exist
+    std::string env_val(env_p);
+    std::stringstream ss(env_val);
+    std::string token;
+
     char delimiter = ':';
     std::vector<std::string> results;
     
@@ -214,28 +256,186 @@ void runExecutableFilePath(std::vector<std::string> &userInput){
     }
 }
 
+// Returns true if the shell should exit
+bool executeSingleCommand(std::vector<std::string>& userInput) {
+    int status = handleBuiltin(userInput);
+    
+    if (status == 2) {
+        return true; // User typed 'exit', break the main loop
+    }
+    if (status == 1) {
+        return false; // Built-in ran successfully, do not exit
+    }
+    
+    // status == 0 means it's an external command. 
+    // runExecutableFilePath will handle the fork() and waitpid().
+    runExecutableFilePath(userInput);
+    return false; 
+}
+
 void executePipeline(std::vector<std::vector<std::string>> &pipeline){
     int fd[2];
     pipe(fd);
-    //assuming no errors happen. 
+    
     pid_t child_write = fork();
     if(child_write == 0){
         dup2(fd[1] , STDOUT_FILENO);
         close(fd[0]);  
-        runExecutableFilePath(pipeline[0]);
-        exit(0);
+        
+        // Traffic cop for the left side of the pipe
+        if (handleBuiltin(pipeline[0]) == 0) {
+            executeExternalCommand(pipeline[0]);
+        }
+        exit(0); // Safely kill the child when done
     }
+    
     pid_t child_read = fork();
     if(child_read == 0){
         dup2(fd[0] , STDIN_FILENO);
         close(fd[1]);  
-        runExecutableFilePath(pipeline[1]);
+        
+        // Traffic cop for the right side of the pipe
+        if (handleBuiltin(pipeline[1]) == 0) {
+            executeExternalCommand(pipeline[1]);
+        }
         exit(0);
     }
+    
     close(fd[0]);
     close(fd[1]);
-    waitpid(child_write,NULL,0);  
-    waitpid(child_read,NULL,0);
+    waitpid(child_write, NULL, 0);  
+    waitpid(child_read, NULL, 0);
+}
+
+
+// Returns:
+// 0 = Not a built-in (needs external execution)
+// 1 = Handled as a built-in successfully
+// 2 = The user typed 'exit', shell should terminate
+int handleBuiltin(std::vector<std::string>& userInput) {
+    if (userInput.empty()) return 1; 
+
+    std::string cmd = userInput[0];
+
+    if (cmd == "exit") {
+        return 2; 
+    } 
+    else if (cmd == "cd"){
+        std::filesystem::path home_directory = std::getenv("HOME");
+        if(userInput[1].substr(0,1) == "~"){
+            userInput[1] = home_directory.string() + "/" + userInput[1].substr(1);
+        }
+        std::filesystem::path new_directory = userInput[1];
+        if(std::filesystem::exists(new_directory)){
+            std::filesystem::current_path(new_directory);
+        }
+        else{
+            std::cerr << "cd: " << new_directory.string() <<": No such file or directory" << std::endl; 
+        }
+        return 1;
+    }
+    else if(cmd == "pwd"){
+        //I am not dealing with errors here, if error is thrown that's an afterthought
+        std::filesystem::path cwd = std::filesystem::current_path();
+        std::cout << cwd.string() << std::endl;
+        return 1;
+    }
+    else if(cmd == "jobs"){
+        // mark the jobs which are done as finished. 
+        for(int i = 0; i < backgroundJobs.size(); i++){
+            if(waitpid(backgroundJobs[i].pid, NULL, WNOHANG) != 0){
+                backgroundJobs[i].running = false;
+            }
+        }
+
+        for(int i = 0; i < backgroundJobs.size(); i++){
+            std::string status = (backgroundJobs[i].running ? "Running " : "Done ");
+            if(i == backgroundJobs.size()-2){
+                std::cout << "[" << backgroundJobs[i].job_id << "]- " << status;    
+            }
+            else if(i == backgroundJobs.size()-1){
+                std::cout << "[" << backgroundJobs[i].job_id << "]+ " << status;    
+            }
+            else{
+                std::cout << "[" << backgroundJobs[i].job_id << "]  " << status;
+            }
+            for(std::string &x: backgroundJobs[i].command){
+                std::cout << x << " ";
+            }
+            std::cout << std::endl;
+        }
+        
+        // reaping zombie process. 
+        for(int i = 0; i < backgroundJobs.size(); i++){
+            if(backgroundJobs[i].running == false){
+                backgroundJobs.erase(backgroundJobs.begin() + i);
+                i--;
+            }
+        }
+        return 1;
+    }
+    else if (cmd == "echo") {
+        for(int i = 1; i < userInput.size() - 1; i++){
+            std::cout << userInput[i] << " ";
+        }
+        std::cout << userInput.back() << std::endl;
+        return 1;
+    } 
+    else if (cmd == "type") {
+        std::string argument = userInput[1];
+
+        if (argument == "echo" || argument == "type" || argument == "exit" || argument == "pwd" || argument == "jobs") {
+            std::cout << argument << " is a shell builtin" << std::endl;
+        } else {
+            const char* env_p = std::getenv("PATH");
+            // need to add if a file is in some directory here
+            if (env_p == nullptr) {
+                std::cerr << "Environment variable not found." << std::endl;
+                return 1;
+            }
+
+            std::string env_val(env_p);
+            std::stringstream ss(env_val);
+            std::string token;
+            std::vector<char* > argv;
+            for(std::string &s : userInput){
+            argv.push_back(s.data());
+            }
+            // execv expects a NULL at the end of the argument list so we append one to argv.
+            argv.push_back(NULL);
+            char** argvPointer = argv.data();
+            // Use this argvPointer inside exec when you fork for a new process 
+            // For LINUX the delimiter for PATH directories is a colon
+            char delimiter = ':';
+            std::vector<std::string> results;
+            while (std::getline(ss, token, delimiter)) {
+                results.push_back(token);
+            }
+            bool foundExecutable = false;
+            namespace fs = std::filesystem;
+            std::string executableName = (userInput[1]);
+            for (std::string& s : results) {
+                fs::path filePath = s + "/" + executableName;
+                if (std::filesystem::exists(filePath)) {
+                    
+                    if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
+                        (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
+                        (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
+                        foundExecutable = true;
+                        std::cout << argument << " is " << filePath.string() << std::endl;
+                        break;
+                    }
+                }
+            }
+            if(!foundExecutable){
+                std::cout << argument << ": not found" << std::endl;
+            }
+        }
+        return 1;
+    }
+
+    // If we make it all the way down here, it wasn't a built-in!
+    return 0; 
 }
 
 int main() {
@@ -352,132 +552,24 @@ int main() {
                 it++;
             }
         }
-        if (userInput[0] == "cd"){
-            std::filesystem::path home_directory = std::getenv("HOME");
-            if(userInput[1].substr(0,1) == "~"){
-                userInput[1] = home_directory.string() + "/" + userInput[1].substr(1);
-            }
-            std::filesystem::path new_directory = userInput[1];
-            if(std::filesystem::exists(new_directory)){
-                std::filesystem::current_path(new_directory);
-            }
-            else{
-                std::cerr << "cd: " << new_directory.string() <<": No such file or directory" << std::endl; 
-            }
-        }
-        else if(command == "pwd"){
-            //I am not dealing with errors here, if error is thrown that's an afterthought
-            std::filesystem::path cwd = std::filesystem::current_path();
-            std::cout << cwd.string() << std::endl;
-        }
-        else if(command == "jobs"){
-            // mark the jobs which are done as finished. 
-            for(int i = 0; i < backgroundJobs.size(); i++){
-                if(waitpid(backgroundJobs[i].pid, NULL, WNOHANG) != 0){
-                    backgroundJobs[i].running = false;
-                }
-            }
+        
 
-            for(int i = 0; i < backgroundJobs.size(); i++){
-                std::string status = (backgroundJobs[i].running ? "Running " : "Done ");
-                if(i == backgroundJobs.size()-2){
-                    std::cout << "[" << backgroundJobs[i].job_id << "]- " << status;    
-                }
-                else if(i == backgroundJobs.size()-1){
-                    std::cout << "[" << backgroundJobs[i].job_id << "]+ " << status;    
-                }
-                else{
-                    std::cout << "[" << backgroundJobs[i].job_id << "]  " << status;
-                }
-                for(std::string &x: backgroundJobs[i].command){
-                    std::cout << x << " ";
-                }
-                std::cout << std::endl;
-            }
-            
-            // reaping zombie process. 
-            for(int i = 0; i < backgroundJobs.size(); i++){
-                if(backgroundJobs[i].running == false){
-                    backgroundJobs.erase(backgroundJobs.begin() + i);
-                    i--;
-                }
-            }
-
-        }
-        else if (command == "exit") {
-            break;
-        } else if (command.substr(0, 4) == "echo") {
-            for(int i = 1; i < userInput.size() - 1; i++){
-                std::cout << userInput[i] << " ";
-            }
-            std::cout << userInput.back() << std::endl;
-        } else if (command.substr(0, 4) == "type") {
-            std::string argument = command.substr(5);
-
-            if (argument == "echo" || argument == "type" || argument == "exit" || argument == "pwd" || argument == "jobs") {
-                std::cout << argument << " is a shell builtin" << std::endl;
-            } else {
-                const char* env_p = std::getenv("PATH");
-                // need to add if a file is in some directory here
-                if (env_p == nullptr) {
-                    std::cerr << "Environment variable not found." << std::endl;
-                    return 1;
-                }
-
-                std::string env_val(env_p);
-                std::stringstream ss(env_val);
-                std::string token;
-                std::vector<char* > argv;
-                for(std::string &s : userInput){
-                argv.push_back(s.data());
-                }
-                // execv expects a NULL at the end of the argument list so we append one to argv.
-                argv.push_back(NULL);
-                char** argvPointer = argv.data();
-                // Use this argvPointer inside exec when you fork for a new process 
-                // For LINUX the delimiter for PATH directories is a colon
-                char delimiter = ':';
-                std::vector<std::string> results;
-                while (std::getline(ss, token, delimiter)) {
-                    results.push_back(token);
-                }
-                bool foundExecutable = false;
-                namespace fs = std::filesystem;
-                std::string executableName = (userInput[1]);
-                for (std::string& s : results) {
-                    fs::path filePath = s + "/" + executableName;
-                    if (std::filesystem::exists(filePath)) {
-                        
-                        if ((fs::status(filePath).permissions() & fs::perms::owner_exec) != fs::perms::none ||
-                            (fs::status(filePath).permissions() & fs::perms::others_exec) != fs::perms::none ||
-                            (fs::status(filePath).permissions() & fs::perms::group_exec) != fs::perms::none) {
-                            foundExecutable = true;
-                            std::cout << argument << " is " << filePath.string() << std::endl;
-                            break;
-                        }
-                    }
-                }
-                if(!foundExecutable){
-                    std::cout << argument << ": not found" << std::endl;
-                }
-
-            }
-            
-        } else if(userInput.back() == "&"){
+        if (userInput.back() == "&") {
             runBackgroundJob(userInput);
         }
         else {
-            runExecutableFilePath(userInput);
+            if (executeSingleCommand(userInput)) {
+                break; // Breaks the while(true) loop to exit the shell
+            }
         }
 
-        if(redirected){
+        if (redirected) {
             std::cout.flush();
             std::cerr.flush();
             dup2(orig_stdout, STDOUT_FILENO);
             dup2(orig_stderr, STDERR_FILENO);
         }
-        close(orig_stdout);
-        close(orig_stderr);
+        
     }
     return 0;
 }
