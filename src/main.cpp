@@ -200,16 +200,7 @@ void runBackgroundJob(std::vector<std::string> &userInput){
     }
 }
 
-char** getArgvPointer(std::vector<std::string> &userInput){
-    std::vector<char* > argv;
-    for(std::string &s : userInput){
-      argv.push_back(s.data());
-    }
-    // execv expects a NULL at the end of the argument list so we append one to argv.
-    argv.push_back(NULL);
-    char** argvPointer = argv.data();
-    return argvPointer;
-}
+
 
 void runExecutableFilePath(std::vector<std::string> &userInput){
     
