@@ -201,37 +201,101 @@ bool executeSingleCommand(std::vector<std::string>& userInput) {
 }
 
 void executePipeline(std::vector<std::vector<std::string>> &pipeline){
-    int fd[2];
-    pipe(fd);
-    
-    pid_t child_write = fork();
-    if(child_write == 0){
-        dup2(fd[1] , STDOUT_FILENO);
-        close(fd[0]);  
-        
-        // Traffic cop for the left side of the pipe
-        if (handleBuiltin(pipeline[0]) == 0) {
-            executeExternalCommand(pipeline[0]);
-        }
-        exit(0); // Safely kill the child when done
+    int num_commands = pipeline.size();
+    int num_pipes = num_commands - 1;
+    std::vector<pid_t> children; // process ids for reaping later on
+    std::vector<std::vector<int>> pipes(num_pipes, std::vector<int>(2));
+    for(int i = 0; i < num_pipes; i++){
+        pipe(pipes[i].data());
     }
-    
-    pid_t child_read = fork();
-    if(child_read == 0){
-        dup2(fd[0] , STDIN_FILENO);
-        close(fd[1]);  
-        
-        // Traffic cop for the right side of the pipe
-        if (handleBuiltin(pipeline[1]) == 0) {
-            executeExternalCommand(pipeline[1]);
+    // pipes[i] now stores the pipeline between command i and i+1.
+    // by convention 0 is the read descriptor and 1 is the write descriptor.
+    // command i writes to pipe[i][1] and command i+1 reads from pipe[i][0]. 
+    for(int i = 0; i < num_commands; i++){
+        if(i == 0){
+            pid_t child = fork();
+            if(child == 0){
+                dup2(pipes[0][1] , STDOUT_FILENO);
+                close(pipes[0][0]);
+                for(int j = 0; j < num_pipes; j++){
+                    if(j == 0) continue;
+                    else{
+                        close(pipes[j][1]);
+                        close(pipes[j][0]);
+                    }
+                } 
+                if (handleBuiltin(pipeline[i]) == 0) {
+                    executeExternalCommand(pipeline[i]);
+                }
+                exit(0); // Kill the child when done
+            }
+            else{
+                children.push_back(child);
+            }
         }
-        exit(0);
-    }
+        else if(i == num_commands-1){
+            pid_t child = fork();
+            if(child == 0){
+                dup2(pipes[i-1][0] , STDIN_FILENO);
+                close(pipes[i-1][1]);
+                for(int j = 0; j < num_pipes; j++){
+                    if(j == num_pipes-1) continue;
+                    else{
+                        close(pipes[j][1]);
+                        close(pipes[j][0]);
+                    }
+                } 
+                if (handleBuiltin(pipeline[i]) == 0) {
+                    executeExternalCommand(pipeline[i]);
+                }
+                exit(0); // Kill the child when done
+            }
+            else{
+                children.push_back(child);
+            }
+        }
+        
+        else{
+            pid_t child = fork();
+            if(child == 0){
+                dup2(pipes[i-1][0] , STDIN_FILENO);
+                dup2(pipes[i][1] , STDOUT_FILENO);
+
+                for(int j = 0; j < num_pipes; j++){
+                    if(j == i-1){
+                        close(pipes[j][1]);
+                    }
+                    else if(j == i){
+                        close(pipes[j][0]);
+                    }
+                    else{
+                        close(pipes[j][1]);
+                        close(pipes[j][0]);
+                    }
+                }
+                if (handleBuiltin(pipeline[i]) == 0) {
+                    executeExternalCommand(pipeline[i]);
+                }
+                exit(0); // Kill the child when done
+            }
+            else{
+                children.push_back(child);
+            }
+        }
+           
+    } 
     
-    close(fd[0]);
-    close(fd[1]);
-    waitpid(child_write, NULL, 0);  
-    waitpid(child_read, NULL, 0);
+    // close all file descriptors in parent. 
+    for(int i = 0; i < pipes.size(); i++){
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+    // wait till all processess are done? 
+    for(int i = 0; i < children.size(); i++){
+        waitpid(children[i], NULL, 0);
+    }
+    // waitpid(child_write, NULL, 0);  
+    // waitpid(child_read, NULL, 0);
 }
 
 
